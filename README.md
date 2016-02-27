@@ -11,7 +11,7 @@ There are two guiding principles:
    module.
 
 
-Litmus tests:
+## Litmus tests
 
 * I should be able to create an LSTM like this:
 
@@ -25,4 +25,9 @@ trainer = Trainer(model=model, loss=loss, method='SGD', max_iterations=1e6)
 trainer.run()
 ```
 
-* Add other litmus tests here...
+* Starting from pre-trained weights should be a breeze.
+* 
+
+## Goals
+* Become well acquainted with the TensorFlow python API.
+* Facilitate exploring methods presented in publications.
