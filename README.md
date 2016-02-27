@@ -29,5 +29,6 @@ trainer.run()
 * 
 
 ## Goals
-* Become well acquainted with the TensorFlow python API.
+* Become well acquainted with the TensorFlow python API. A library like this
+  surely already exists. That's not the point.
 * Facilitate exploring methods presented in publications.
