@@ -33,16 +33,26 @@ def fixed_size_convert_to(root, tfrecord_filename):
 
 def resize_and_convert_to(root, size, tfrecord_filename):
     writer = tf.python_io.TFRecordWriter(tfrecord_filename)
+    num_images = 0
     for images, labels in imgdir.generate_image_batches(root, batch_size=1):
         image = cv2.resize(images[0], size)
         encode_image(writer, image, labels[0])
+        num_images += 1
+
+    return num_images
 
 
-def convert_to(root, tfrecord_filename, size=None):
+def imgdir_to_tfrecord(root, tfrecord_filename, size=None):
+    """ Converts a directory of images, separated by into one sub-directory per
+    class to a TFRecord.
+
+    Returns:
+      number of images added to TFRecord
+    """
     if size is not None:
-        resize_and_convert_to(root, size, tfrecord_filename)
+        return resize_and_convert_to(root, size, tfrecord_filename)
     else:
-        fixed_size_convert_to(root, tfrecord_filename)
+        return fixed_size_convert_to(root, tfrecord_filename)
 
 
 # =============================================================================

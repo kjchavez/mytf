@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import os
 import argparse
-from mytensorflow.data.tfrecord import convert_to
+import yaml
+from mytensorflow.data.tfrecord import imgdir_to_tfrecord
 
 parser = argparse.ArgumentParser()
 parser.add_argument("root", help="path to root of image directory")
@@ -16,4 +17,18 @@ if args.size is not None:
 if args.output_file is None:
     args.output_file = os.path.basename(args.root) + ".tfrecord"
 
-convert_to(args.root, args.output_file, size=args.size)
+num_images = imgdir_to_tfrecord(args.root, args.output_file, size=args.size)
+
+# Write metadata file.
+labels_filename = os.path.basename(args.root) + ".labels"
+with open(labels_filename) as fp:
+    num_classes = len(fp.readlines())
+
+metadata_filename = os.path.basename(args.root) + '.metadata'
+metadata = {'shape': [args.size[0], args.size[1], 3],
+            'num_classes': num_classes,
+            'num_examples': num_images,
+            'filenames': [args.output_file]}
+
+with open(metadata_filename, 'w') as fp:
+    yaml.dump(metadata, fp)
