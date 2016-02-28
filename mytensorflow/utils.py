@@ -27,6 +27,16 @@ def _add_l1_reg(var, weight):
     tf.add_to_collection('losses', l1_reg)
 
 
+def encode_one_hot(labels, num_classes):
+    batch_size = tf.size(labels)
+    labels = tf.expand_dims(labels, 1)
+    indices = tf.expand_dims(tf.range(0, batch_size, 1), 1)
+    concated = tf.concat(1, [indices, labels])
+    onehot_labels = tf.sparse_to_dense(
+        concated, tf.pack([batch_size, num_classes]), 1.0, 0.0)
+    return onehot_labels
+
+
 def get_train_feed_dict(modules):
     feed_dict = {}
     for module in modules:

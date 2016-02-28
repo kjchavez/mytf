@@ -1,10 +1,9 @@
 """ Utilities for working with TFRecords. """
+from __future__ import print_function
 
 import tensorflow as tf
-
-from __future__ import print_function
 import cv2
-from .data import imgdir
+from mytensorflow.data import imgdir
 
 
 def _int64_feature(value):
@@ -18,7 +17,7 @@ def _bytes_feature(value):
 # =============================================================================
 #                         Encoding functions
 # =============================================================================
-def add_single_image(writer, image, label):
+def encode_image(writer, image, label):
     rows = image.shape[0]
     cols = image.shape[1]
     depth = image.shape[2]
@@ -35,14 +34,14 @@ def add_single_image(writer, image, label):
 def fixed_size_convert_to(root, tfrecord_filename):
     writer = tf.python_io.TFRecordWriter(tfrecord_filename)
     for images, labels in imgdir.generate_image_batches(root, batch_size=1):
-        add_single_image(writer, images[0], labels[0])
+        encode_image(writer, images[0], labels[0])
 
 
 def resize_and_convert_to(root, size, tfrecord_filename):
     writer = tf.python_io.TFRecordWriter(tfrecord_filename)
     for images, labels in imgdir.generate_image_batches(root, batch_size=1):
         image = cv2.resize(images[0], size)
-        add_single_image(writer, image, labels[0])
+        encode_image(writer, image, labels[0])
 
 
 def convert_to(root, tfrecord_filename, size=None):
