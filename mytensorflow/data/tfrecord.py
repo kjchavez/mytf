@@ -18,14 +18,8 @@ def _bytes_feature(value):
 #                         Encoding functions
 # =============================================================================
 def encode_image(writer, image, label):
-    rows = image.shape[0]
-    cols = image.shape[1]
-    depth = image.shape[2]
     image_raw = image.tostring()
     example = tf.train.Example(features=tf.train.Features(feature={
-                           'height': _int64_feature(rows),
-                           'width': _int64_feature(cols),
-                           'depth': _int64_feature(depth),
                            'label': _int64_feature(int(label)),
                            'image_raw': _bytes_feature(image_raw)}))
     writer.write(example.SerializeToString())
@@ -54,21 +48,19 @@ def convert_to(root, tfrecord_filename, size=None):
 # =============================================================================
 #                         Decoding functions
 # =============================================================================
-def read_and_decode_image(filename_queue):
+# TODO(kjchavez): Figure out how to reconcile dynamically sized images, the
+# code below doesn't work.
+def read_and_decode_image(filename_queue, shape):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
     # TODO(kjchavez): Update this to use the new parse_single_example API from
     # release 0.7 of TensorFlow.
     features = tf.parse_single_example(
                    serialized_example,
-                   dense_keys=["image_raw", "label", "depth", "width",
-                               "height"],
-                   dense_types=[tf.string, tf.int64, tf.int64, tf.int64,
-                                tf.int64])
+                   dense_keys=["image_raw", "label"],
+                   dense_types=[tf.string, tf.int64])
 
     image = tf.decode_raw(features['image_raw'], tf.uint8)
-    depth_major = tf.reshape(image, [features['depth'],
-                                     features['height'],
-                                     features['depth']])
+    row_major = tf.reshape(image, shape)
 
-    return tf.transpose(depth_major, [1, 2, 0]), features['label']
+    return row_major, features['label']

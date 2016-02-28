@@ -2,23 +2,32 @@
     A set of data serialization and deserialization utilities.
 """
 import mytensorflow as mytf
+import mytensorflow.data.tfrecord as mytf_tfrecord
 import tensorflow as tf
+import yaml
 
 
 class TFRecordSource(object):
-    def __init__(self, name, filenames, batch_size,
-                 num_classes, num_epochs=None, shuffle=False):
-        self.num_classes = num_classes
-        if isinstance(filenames, (str, unicode)):
-            filenames = [filenames]
+    def __init__(self, name, metadata_file, batch_size,
+                 num_epochs=None, shuffle=False):
+        with open(metadata_file) as fp:
+            metadata = yaml.load(fp)
+
+        assert 'num_classes' in metadata
+        assert 'filenames' in metadata
+        assert 'shape' in metadata
+
+        self.num_classes = metadata['num_classes']
+        shape = metadata['shape']
+        filenames = metadata['filenames']
 
         with tf.name_scope(name):
             filename_queue = tf.train.string_input_producer(filenames)
 
             # Even when reading in multiple threads, share the filename
             # queue.
-            image, label = mytf.data.tfrecord.read_and_decode_image(
-                                filename_queue)
+            image, label = mytf_tfrecord.read_and_decode_image(
+                                filename_queue, shape)
 
             # Shuffle the examples and collect them into batch_size batches.
             # (Internally uses a RandomShuffleQueue.)
@@ -40,4 +49,4 @@ class TFRecordSource(object):
             # TODO(kjchavez): num_classes should come from the data source
             # itself if possible.
             self.dense_labels = mytf.utils.encode_one_hot(self.sparse_labels,
-                                                          num_classes)
+                                                          self.num_classes)
