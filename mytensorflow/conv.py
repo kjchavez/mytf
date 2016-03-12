@@ -62,7 +62,7 @@ class FullyConnectedLayer(object):
     def __init__(self, name, input, output_dim,
                  activation_fn=tf.nn.relu,
                  keep_prob=0.5,
-                 W_init=tf.truncated_normal_initializer(1e-4),
+                 W_init=tf.truncated_normal_initializer(stddev=1e-4),
                  b_init=tf.constant_initializer(0.1),
                  device=mytf.DEFAULT_DEVICE):
 
