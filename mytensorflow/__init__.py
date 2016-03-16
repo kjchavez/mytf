@@ -1,5 +1,5 @@
 # Set some package-wide constants before importing other modules.
-DEFAULT_DEVICE = "/cpu:0"
+DEFAULT_DEVICE = "/gpu:0"
 MOVING_AVERAGE_DECAY_FOR_LOSS = 0.999
 MOVING_AVERAGE_DECAY_FOR_VARS = 0.999
 

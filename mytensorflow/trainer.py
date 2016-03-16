@@ -10,7 +10,7 @@ class SGDTrainer(object):
     Create an optimizer and apply to all trainable variables. Add moving
     average for all trainable variables.
     """
-    def __init__(self, total_loss, components, lr,
+    def __init__(self, total_loss, eval_accuracy, dataset, components, lr,
                  lr_decay_factor=0.1,
                  steps_per_decay=1e5):
         # Decay the learning rate exponentially based on the number of steps.
@@ -62,34 +62,51 @@ class SGDTrainer(object):
         # TODO(kjchavez): It's odd that I need to pass in the components, just
         # to do this. Seems like I could use the same tf.collection() approach
         # and keep track of these dicts at a global level?
-        self.train_feed_dict = utils._get_train_feed_dict(components)
-        self.eval_feed_dict = utils._get_train_feed_dict(components)
-
+        self.eval_accuracy = eval_accuracy
+        self.components = components
         self.summaries = tf.merge_all_summaries()
+        self.dataset = dataset
+
+    def evaluate(self):
+        accuracy = 0
+        num_steps = self.dataset.num_test_examples // self.dataset.batch_size
+        for i in xrange(num_steps):
+            accuracy += self.eval_accuracy.eval(
+                feed_dict=utils._get_eval_feed_dict(self.components))
+
+        return accuracy / num_steps
 
     def run(self, iterations, print_every_n=1000, eval_every_n=10000,
             summarize_every_n=1000, diverge_threshold=1e3):
         with tf.Session() as sess:
             writer = tf.train.SummaryWriter("log", sess.graph_def)
             sess.run(self.init)
-            tf.train.start_queue_runners(sess=sess)
+            # Start input enqueue threads.
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
             for i in xrange(iterations):
+                train_feed_dict = utils._get_train_feed_dict(self.components)
                 if i % summarize_every_n == 0:
                     _, summaries, loss = sess.run(
                                             [self.train_op, self.summaries,
                                              self.total_loss],
-                                            feed_dict=self.train_feed_dict)
+                                            feed_dict=train_feed_dict)
                     writer.add_summary(summaries, i)
                 else:
                     _, loss = sess.run([self.train_op, self.total_loss],
-                                       feed_dict=self.train_feed_dict)
+                                       feed_dict=train_feed_dict)
 
                 if i % print_every_n == 0:
                     print('Iter %d: loss = %0.5f' % (i, loss))
 
                 if loss > diverge_threshold:
                     print('Training is diverging. Exiting.')
+                    return
 
-                if i % eval_every_n == 0:
-                    print ('Accuracy on validation set: TBD')
+                if i % eval_every_n == 0 and i != 0:
+                    accuracy = self.evaluate()
+                    print ('Accuracy on validation set: %0.5f' % accuracy)
+
+            coord.request_stop()
+            coord.join(threads)

@@ -20,39 +20,9 @@ def _bytes_feature(value):
 def encode_image(writer, image, label):
     image_raw = image.tostring()
     example = tf.train.Example(features=tf.train.Features(feature={
-                           'label': _int64_feature(int(label)),
-                           'image_raw': _bytes_feature(image_raw)}))
+        'label': _int64_feature(int(label)),
+        'image_raw': _bytes_feature(image_raw)}))
     writer.write(example.SerializeToString())
-
-
-def fixed_size_convert_to(root, tfrecord_filename):
-    writer = tf.python_io.TFRecordWriter(tfrecord_filename)
-    for images, labels in imgdir.generate_image_batches(root, batch_size=1):
-        encode_image(writer, images[0], labels[0])
-
-
-def resize_and_convert_to(root, size, tfrecord_filename):
-    writer = tf.python_io.TFRecordWriter(tfrecord_filename)
-    num_images = 0
-    for images, labels in imgdir.generate_image_batches(root, batch_size=1):
-        image = cv2.resize(images[0], size)
-        encode_image(writer, image, labels[0])
-        num_images += 1
-
-    return num_images
-
-
-def imgdir_to_tfrecord(root, tfrecord_filename, size=None):
-    """ Converts a directory of images, separated by into one sub-directory per
-    class to a TFRecord.
-
-    Returns:
-      number of images added to TFRecord
-    """
-    if size is not None:
-        return resize_and_convert_to(root, size, tfrecord_filename)
-    else:
-        return fixed_size_convert_to(root, tfrecord_filename)
 
 
 # =============================================================================
@@ -63,12 +33,12 @@ def imgdir_to_tfrecord(root, tfrecord_filename, size=None):
 def read_and_decode_image(filename_queue, shape):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
-    # TODO(kjchavez): Update this to use the new parse_single_example API from
-    # release 0.7 of TensorFlow.
     features = tf.parse_single_example(
-                   serialized_example,
-                   dense_keys=["image_raw", "label"],
-                   dense_types=[tf.string, tf.int64])
+        serialized_example,
+        features = {
+            "image_raw": tf.FixedLenFeature([], tf.string),
+            "label": tf.FixedLenFeature([], tf.int64)
+        })
 
     image = tf.decode_raw(features['image_raw'], tf.uint8)
     row_major = tf.reshape(image, shape)
