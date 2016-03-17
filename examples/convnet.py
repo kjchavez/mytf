@@ -9,32 +9,53 @@ BATCH_SIZE = 64
 dataset = mytf.source.TFRecordSource('dataset', 'housemates.metadata',
                                      BATCH_SIZE, whiten=True)
 
-# Roughly zero mean:
-X = dataset.train_data # tf.image.per_image_whitening(dataset.train_data)
-conv1 = mytf.conv_layer_with_l2_reg('conv1', X, 64, 0)
-pool1 = tf.nn.max_pool(conv1.activations, [1, 2, 2, 1], [1, 2, 2, 1], 'SAME')
-conv2 = mytf.conv_layer_with_l2_reg('conv2', pool1, 64, 0)
-pool2 = tf.nn.max_pool(conv2.activations, [1, 2, 2, 1], [1, 2, 2, 1], 'SAME')
-fc3 = mytf.fc_layer_with_l2_reg('fc3', conv2.activations, 256, 0, keep_prob=1,
-        W_init=tf.truncated_normal_initializer(stddev=1e-2))
-fc4 = mytf.fc_layer_with_l2_reg('fc4', fc3.output, 128,
-                                0, keep_prob=1)
+c1 = mytf.ConvLayer("conv1", dataset.img_shape[2], 32)
+c2 = mytf.ConvLayer("conv2", c1.depth, 64)
+fc3 = mytf.FullyConnectedLayer("fc3",
+                               dataset.img_shape[0]*dataset.img_shape[1]*64/4,
+                               512, keep_prob=1.0)
+fc4 = mytf.FullyConnectedLayer("fc4", 512, dataset.num_classes, keep_prob=1.)
 
-fc5 = mytf.fc_layer('fc5', fc4.output, dataset.num_classes, keep_prob=1)
+def inference(X):
+    output = c1.transform(X)
+    output = tf.nn.max_pool(output, [1, 2, 2, 1], [1, 2, 2, 1], 'SAME')
+    output = c2.transform(output)
+    output = fc3.transform(output)
+    output = fc4.transform(output)
+    return output
 
-# tf.add_to_collection('train_feed_dict', ('abc', 4))
-# Loss (total_loss = cross_entropy_)
+def true_count(logits, labels):
+    """ Determines accuracy of prediction. """
+    correct_prediction = tf.equal(tf.argmax(logits,1), tf.argmax(labels,1))
+    count = tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
+    return count
+
+# Training loss.
+logits = inference(dataset.train_data)
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-                    fc5.output, dataset.train_dense_labels,
-                    name='cross_entropy_per_example')
-
-cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+                    logits, dataset.train_dense_labels,
+                    name='cross_entropy')
+cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy_mean')
 tf.add_to_collection('losses', cross_entropy_mean)
-
+print tf.get_collection('losses')
 total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
 
-components = [conv1, conv2, fc3, fc4, fc5]
-t = mytf.trainer.SGDTrainer(total_loss, dataset, components, 1e-3)
-t.run(10000, print_every_n=20, summarize_every_n=20)
 
-# print tf.get_collection('train_feed_dict')
+true_count = true_count(inference(dataset.test_data),
+                        dataset.test_dense_labels)
+def evaluate():
+    """ Should only be called inside a tf.Session().
+    Returns a formatted string to be displayed as evaluation results.
+    """
+    num_correct = 0
+    total = 0
+    for i in xrange(dataset.num_test_examples // dataset.batch_size):
+        num_correct += true_count.eval(feed_dict=mytf.utils._get_eval_feed_dict())
+        total += dataset.batch_size
+
+    return "Accuracy on validation set: %0.3f%%" % (100*float(num_correct) /
+                                                     total)
+
+train_op = mytf.train.get_sgd_train_op(total_loss, lr=1e-5,
+                                       steps_per_decay=1e3)
+mytf.train.train(train_op, evaluate, total_loss, 1e4)

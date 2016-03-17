@@ -38,18 +38,18 @@ def encode_one_hot(labels, num_classes):
     return onehot_labels
 
 
-def _get_train_feed_dict(modules):
+def _get_train_feed_dict():
     feed_dict = {}
-    for module in modules:
-        feed_dict.update(module.get_train_feed_dict())
+    for fn in tf.get_collection(mytf.TRAIN_FEED_DICT_FN):
+        feed_dict.update(fn())
 
     return feed_dict
 
 
-def _get_eval_feed_dict(modules):
+def _get_eval_feed_dict():
     feed_dict = {}
-    for module in modules:
-        feed_dict.update(module.get_eval_feed_dict())
+    for fn in tf.get_collection(mytf.EVAL_FEED_DICT_FN):
+        feed_dict.update(fn())
 
     return feed_dict
 

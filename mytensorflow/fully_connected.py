@@ -37,6 +37,10 @@ class FullyConnectedLayer(object):
             # Add a placeholder for the keep probability so we can turn on/off
             # during training/testing.
             self.keep_prob = tf.placeholder(tf.float32)
+            tf.add_to_collection(mytf.TRAIN_FEED_DICT_FN,
+                                 self.get_train_feed_dict)
+            tf.add_to_collection(mytf.EVAL_FEED_DICT_FN,
+                                 self.get_eval_feed_dict)
 
 
     def transform(self, X, summarize=False):

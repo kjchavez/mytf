@@ -1,5 +1,5 @@
 import mytensorflow as mytf
-
+import math
 import tensorflow as tf
 from .utils import _variable_on_device, _add_l2_reg
 import operator
@@ -23,13 +23,14 @@ class ConvLayer(object):
         self.activation_fn = activation_fn
         self.padding = padding
         self.stride = stride
+        self.depth = output_depth
 
         if W_init is None:
             N = input_depth * kernel_size[0] * kernel_size[1]
             W_init = tf.truncated_normal_initializer(stddev=math.sqrt(2.0/N))
 
         if b_init is None:
-            b_init = tf.constant_initializer(0.0)
+            b_init = tf.constant_initializer(0.1)
 
         with tf.variable_scope(name) as scope:
             shape = list(kernel_size) + [input_depth, output_depth]
@@ -49,15 +50,5 @@ class ConvLayer(object):
             tf.scalar_summary(self.name + "_" + X.name + '/sparsity',
                               tf.nn.zero_fraction(activations))
 
-    def get_train_feed_dict(self):
-        return {}
-
-    def get_eval_feed_dict(self):
-        return {}
-
-
-def conv_layer_with_l2_reg(name, input_depth, output_depth, weight, **kwargs):
-    conv = ConvLayer(name, input_depth, output_depth, **kwargs)
-    _add_l2_reg(conv.kernel, weight)
-    return conv
+        return activations
 
